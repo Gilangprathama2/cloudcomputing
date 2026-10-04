@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShadowWall - Anonymously Connected Cloud Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 9999px; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans selection:bg-indigo-500 selection:text-white pb-20">
+
+    <!-- Navbar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('public')">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 font-extrabold text-xl">
+                    🤫
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg bg-gradient-to-r from-indigo-400 via-violet-300 to-pink-400 bg-clip-text text-transparent">SHADOW WALL</h1>
+                    <p class="text-[10px] text-slate-400 font-medium tracking-wide">CLOUD PLATFORM</p>
+                </div>
+            </div>
+
+            <!-- Nav Action & Status -->
+            <div class="flex items-center gap-3">
+                <div id="navPublicControls">
+                    <button onclick="openAdminModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition flex items-center gap-1.5">
+                        <span>🔐</span> Login Admin
+                    </button>
+                </div>
+                <div id="navAdminControls" class="hidden flex items-center gap-3">
+                    <span class="text-xs text-indigo-400 font-bold bg-indigo-950/60 px-3 py-1 rounded-lg border border-indigo-800/50">Mode Admin</span>
+                    <button onclick="logoutAdmin()" class="px-3.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-800/50 text-xs font-semibold text-red-300 transition">
+                        Keluar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main App View -->
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
+        
+        <!-- VIEW 1: PUBLIC PAGE (USER ANONIM) -->
+        <div id="publicView" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                <div class="glass-panel rounded-2xl p-6 relative overflow-hidden shadow-2xl">
+                    <span class="inline-block px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-3">
+                        ✨ 100% Anonim & Aman
+                    </span>
+                    <h2 class="text-2xl font-bold tracking-tight text-white mb-2">Suarakan Pikiranmu Tanpa Ragu.</h2>
+                    <p class="text-xs text-slate-400 leading-relaxed">
+                        Kirim pesan atau curhatan secara publik. Data tersimpan secara real-time di Supabase Cloud Database.
+                    </p>
+                </div>
+
+                <div class="glass-panel rounded-2xl p-6 shadow-xl border border-slate-800/80">
+                    <h3 class="text-sm font-bold text-slate-200 mb-4 uppercase tracking-wider flex items-center gap-2">
+                        <span>✍️</span> Tulis Pesan Baru
+                    </h3>
+                    <form id="confessionForm" class="flex flex-col gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">KATEGORI PESAN</label>
+                            <select id="categoryInput" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                                <option value="Curhatan">💭 Curhatan / Pribadi</option>
+                                <option value="Akademik">🎓 Kampus & Akademik</option>
+                                <option value="Motivasi">🔥 Motivasi & Semangat</option>
+                                <option value="Random">🚀 Random / Bebas</option>
+                                <option value="Confess">💌 Confess / Rahasia</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">ISI PESAN</label>
+                            <textarea 
+                                id="messageInput" 
+                                rows="4" 
+                                maxlength="500"
+                                placeholder="Tulis pesan rahasiamu di sini..." 
+                                class="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 resize-none custom-scrollbar"
+                                required
+                            ></textarea>
+                        </div>
+                        <button 
+                            type="submit" 
+                            id="submitBtn"
+                            class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2"
+                        >
+                            <span>Kirim ke Cloud</span>
+                            <span id="btnIcon">🚀</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 flex flex-col gap-5">
+                <div class="glass-panel rounded-2xl p-4 flex justify-between items-center shadow-lg">
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        <button onclick="filterCategory('All')" id="filter-All" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">Semua</button>
+                        <button onclick="filterCategory('Curhatan')" id="filter-Curhatan" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-slate-400 transition">Curhatan</button>
+                        <button onclick="filterCategory('Akademik')" id="filter-Akademik" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-slate-400 transition">Akademik</button>
+                        <button onclick="filterCategory('Motivasi')" id="filter-Motivasi" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-slate-400 transition">Motivasi</button>
+                    </div>
+                    <button onclick="fetchConfessions()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-850 border border-slate-800 text-xs font-semibold text-slate-300">🔄 Refresh</button>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Live Cloud Feed</h3>
+                    <div id="confessionsList" class="flex flex-col gap-4 min-h-[400px]">
+                        <div class="glass-panel rounded-2xl p-12 text-center text-xs text-slate-400">Memuat data dari cloud...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ADMIN DASHBOARD (PENGELOLA) -->
+        <div id="adminView" class="hidden flex flex-col gap-6">
+            <div class="glass-panel rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-xl border border-indigo-500/20">
+                <div>
+                    <span class="px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold mb-2 inline-block">🛠️ Panel Kontrol Administrator</span>
+                    <h2 class="text-2xl font-bold text-white">Kelola Pesan Cloud</h2>
+                    <p class="text-xs text-slate-400 mt-1">Anda memiliki hak akses untuk menghapus pesan yang tidak pantas dari database.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="bg-slate-900 px-4 py-2.5 rounded-xl border border-slate-800 text-center">
+                        <span class="block text-[10px] text-slate-400">TOTAL PESAN</span>
+                        <span id="adminTotalCount" class="text-lg font-bold text-indigo-400">0</span>
+                    </div>
+                    <button onclick="switchView('public')" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-xs font-semibold text-slate-300 transition">
+                        Kembali ke Beranda 🌐
+                    </button>
+                </div>
+            </div>
+
+            <!-- Admin Table View -->
+            <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl border border-slate-800">
+                <div class="p-4 border-b border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Daftar Semua Pesan Database</h3>
+                    <button onclick="fetchConfessions()" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-xs text-slate-300">🔄 Refresh Tabel</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider">
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Kategori</th>
+                                <th class="p-4">Isi Pesan</th>
+                                <th class="p-4">Waktu</th>
+                                <th class="p-4 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTableBody" class="divide-y divide-slate-800/60">
+                            <tr>
+                                <td colspan="5" class="p-8 text-center text-slate-500">Memuat data tabel...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL LOGIN ADMIN -->
+    <div id="adminModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-panel rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-800 relative">
+            <h3 class="text-base font-bold text-white mb-2 flex items-center gap-2"><span>🔐</span> Login Admin</h3>
+            <p class="text-xs text-slate-400 mb-4">Masukkan password rahasia untuk mengakses panel admin.</p>
+            <form id="loginForm" class="flex flex-col gap-3">
+                <input 
+                    type="password" 
+                    id="adminPasswordInput" 
+                    placeholder="Masukkan Password..." 
+                    class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    required
+                >
+                <div class="flex gap-2 mt-2">
+                    <button type="button" onclick="closeAdminModal()" class="w-1/2 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-slate-400">Batal</button>
+                    <button type="submit" class="w-1/2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-md">Masuk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script & Supabase Configuration -->
+    <script>
+        // ==========================================
+        // GANTI KREDENSIAL INI DENGAN SUPABASE ANDA
+        // ==========================================
+        const SUPABASE_URL = 'https://your-project-id.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-supabase-anon-key-here';
+        // Password Admin Sederhana untuk Tugas UTS
+        const ADMIN_SECRET = 'admin123'; 
+        // ==========================================
+
+        let supabaseClient = null;
+        let currentFilter = 'All';
+        let allConfessions = [];
+        let isAdminLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+
+        try {
+            const { createClient } = supabase;
+            supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (e) {
+            console.error("Gagal menginisialisasi Supabase:", e);
+        }
+
+        // Cek status sesi saat halaman dimuat
+        if (isAdminLoggedIn) {
+            document.getElementById('navPublicControls').classList.add('hidden');
+            document.getElementById('navAdminControls').classList.remove('hidden');
+        }
+
+        // Switch View Handler (Public vs Admin)
+        function switchView(view) {
+            if (view === 'admin' && !isAdminLoggedIn) {
+                openAdminModal();
+                return;
+            }
+
+            const publicView = document.getElementById('publicView');
+            const adminView = document.getElementById('adminView');
+
+            if (view === 'admin') {
+                publicView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+                renderAdminTable();
+            } else {
+                adminView.classList.add('hidden');
+                publicView.classList.remove('hidden');
+                fetchConfessions();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Modal Handler
+        function openAdminModal() { document.getElementById('adminModal').classList.remove('hidden'); }
+        function closeAdminModal() { document.getElementById('adminModal').classList.add('hidden'); }
+
+        // Login Admin Submit
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === ADMIN_SECRET) {
+                isAdminLoggedIn = true;
+                localStorage.setItem('isAdminLoggedIn', 'true');
+                closeAdminModal();
+                document.getElementById('adminPasswordInput').value = '';
+                document.getElementById('navPublicControls').classList.add('hidden');
+                document.getElementById('navAdminControls').classList.remove('hidden');
+                switchView('admin');
+            } else {
+                alert('Password Admin Salah!');
+            }
+        });
+
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            localStorage.removeItem('isAdminLoggedIn');
+            document.getElementById('navAdminControls').classList.add('hidden');
+            document.getElementById('navPublicControls').classList.remove('hidden');
+            switchView('public');
+        }
+
+        // Fetch Data from Supabase
+        async function fetchConfessions() {
+            if (!supabaseClient || SUPABASE_URL.includes('your-project-id')) {
+                document.getElementById('confessionsList').innerHTML = `<div class="glass-panel rounded-2xl p-8 text-center text-xs text-red-400">Harap atur SUPABASE_URL dan SUPABASE_ANON_KEY di dalam kode!</div>`;
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient
+                    .from('confessions')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                allConfessions = data || [];
+                renderConfessions();
+                if (!document.getElementById('adminView').classList.contains('hidden')) {
+                    renderAdminTable();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Render Public Feed
+        function renderConfessions() {
+            let filtered = allConfessions;
+            if (currentFilter !== 'All') {
+                filtered = allConfessions.filter(item => item.category === currentFilter);
+            }
+
+            const listEl = document.getElementById('confessionsList');
+            if (filtered.length === 0) {
+                listEl.innerHTML = `<div class="glass-panel rounded-2xl p-12 text-center text-xs text-slate-400">Belum ada pesan.</div>`;
+                return;
+            }
+
+            listEl.innerHTML = '';
+            filtered.forEach(item => {
+                const date = new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                const card = document.createElement('div');
+                card.className = 'glass-panel rounded-2xl p-5 shadow-lg border border-slate-800/80 flex flex-col gap-3';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">${item.category}</span>
+                        <span class="text-[10px] text-slate-500">${date}</span>
+                    </div>
+                    <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">${escapeHtml(item.message)}</p>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // Render Admin Table
+        function renderAdminTable() {
+            document.getElementById('adminTotalCount').textContent = allConfessions.length;
+            const tbody = document.getElementById('adminTableBody');
+            
+            if (allConfessions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500">Tidak ada data pesan di database.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = '';
+            allConfessions.forEach(item => {
+                const date = new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-900/40 transition';
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-slate-400">#${item.id}</td>
+                    <td class="p-4"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300">${item.category}</span></td>
+                    <td class="p-4 text-slate-200 max-w-xs truncate">${escapeHtml(item.message)}</td>
+                    <td class="p-4 text-slate-400 text-[11px]">${date}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="deleteConfession(${item.id})" class="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-900 text-red-300 border border-red-800/50 font-semibold text-[11px] transition">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Delete Data Handler (Admin Only)
+        async function deleteConfession(id) {
+            if (!confirm(`Yakin ingin menghapus pesan #${id} dari cloud database?`)) return;
+
+            try {
+                const { error } = await supabaseClient
+                    .from('confessions')
+                    .delete()
+                    .eq('id', id);
+
+                if (error) throw error;
+                fetchConfessions();
+            } catch (err) {
+                alert('Gagal menghapus pesan: ' + err.message);
+            }
+        }
+
+        // Filter Category Handler
+        function filterCategory(cat) {
+            currentFilter = cat;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white');
+                btn.classList.add('bg-slate-900', 'text-slate-400');
+            });
+            const activeBtn = document.getElementById(`filter-${cat}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('bg-slate-900', 'text-slate-400');
+                activeBtn.classList.add('bg-indigo-600', 'text-white');
+            }
+            renderConfessions();
+        }
+
+        // Submit Form Handler
+        document.getElementById('confessionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const message = document.getElementById('messageInput').value.trim();
+            const category = document.getElementById('categoryInput').value;
+
+            if (!message) return;
+            if (!supabaseClient || SUPABASE_URL.includes('your-project-id')) {
+                alert('Harap atur kredensial Supabase terlebih dahulu di dalam kode!');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            document.getElementById('btnIcon').textContent = '⏳';
+
+            try {
+                const { error } = await supabaseClient
+                    .from('confessions')
+                    .insert([{ message, category }]);
+
+                if (error) throw error;
+
+                document.getElementById('messageInput').value = '';
+                confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                fetchConfessions();
+            } catch (err) {
+                alert('Gagal mengirim pesan: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                document.getElementById('btnIcon').textContent = '🚀';
+            }
+        });
+
+        function escapeHtml(text) {
+            const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        fetchConfessions();
+    </script>
+</body>
+</html>
